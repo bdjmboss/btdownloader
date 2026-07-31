@@ -1,0 +1,11 @@
+.buildozer/
+.buildozer_global/
+bin/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.apk
+*.aab
+*.keystore
+*.spec.bak
