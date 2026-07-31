@@ -46,8 +46,9 @@ jobs:
         ls -lh bin/*.apk
 
     - name: Upload APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: btdownloader-apk
         path: bin/*.apk
         retention-days: 30
+        overwrite: true
