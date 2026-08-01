@@ -22,16 +22,15 @@ jobs:
         sudo apt update
         sudo apt install -y git zip unzip openjdk-17-jdk python3-pip python3-venv autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
 
-        # Override python3 to use 3.10 instead of 3.14
-        sudo ln -sf /usr/bin/python3.10 /usr/local/bin/python3
-        python3 --version
-
-        pip3 install --user --upgrade buildozer Cython virtualenv
-        export PATH=$PATH:~/.local/bin/
+        # Use Python 3.10 explicitly (not 3.14)
+        python3.10 --version
+        python3.10 -m pip install --user --upgrade pip
+        python3.10 -m pip install --user --upgrade buildozer Cython virtualenv
+        export PATH=~/.local/bin:$PATH
 
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
-        buildozer android debug
+        python3.10 -m buildozer android debug
         ls -lh bin/*.apk
 
     - name: Upload APK
