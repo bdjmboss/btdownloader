@@ -37,24 +37,38 @@ jobs:
         # Fix open_rich_spinner ImportError (pip 24.1+ removed this function)
         # Inject sitecustomize.py via PYTHONPATH to auto-downgrade pip in any venv
         mkdir -p /tmp/pipfix
-        echo 'aW1wb3J0IHN1YnByb2Nlc3MsIHN5cywgb3MKaWYgc3lzLnByZWZpeCAhPSBzeXMuYmFzZV9wcmVmaXg6CiAgICB0cnk6CiAgICAgICAgaW1wb3J0IHBpcAogICAgICAgIHYgPSBwaXAuX192ZXJzaW9uX18uc3BsaXQoJy4nKQogICAgICAgIG1ham9yLCBtaW5vciA9IGludCh2WzBdKSwgaW50KHZbMV0pCiAgICAgICAgaWYgbWFqb3IgPiAyNCBvciAobWFqb3IgPT0gMjQgYW5kIG1pbm9yID49IDEpOgogICAgICAgICAgICBzdWJwcm9jZXNzLmNoZWNrX2NhbGwoCiAgICAgICAgICAgICAgICBbc3lzLmV4ZWN1dGFibGUsICctbScsICdwaXAnLCAnaW5zdGFsbCcsICdwaXA9PTI0LjAnLCAnLXEnXSwKICAgICAgICAgICAgICAgIHN0ZGVycj1zdWJwcm9jZXNzLkRFVk5VTEwsIHN0ZG91dD1zdWJwcm9jZXNzLkRFVk5VTEwKICAgICAgICAgICAgKQogICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICBwYXNz' | base64 -d > /tmp/pipfix/sitecustomize.py
+        echo 'aW1wb3J0IHN1YnByb2Nlc3MsIHN5cywgb3MKaWYgb3MuZW52aXJvbi5nZXQoJ1BJUF9ET1dOR1JBREVfRE9ORScpIG9yIG9zLmVudmlyb24uZ2V0KCdQSVBfRE9XTkdSQURFX0lOX1BST0dSRVNTJyk6CiAgICBwYXNzCmVsaWYgc3lzLnByZWZpeCAhPSBzeXMuYmFzZV9wcmVmaXg6CiAgICB0cnk6CiAgICAgICAgaW1wb3J0IHBpcAogICAgICAgIHYgPSBwaXAuX192ZXJzaW9uX18uc3BsaXQoJy4nKQogICAgICAgIG1ham9yLCBtaW5vciA9IGludCh2WzBdKSwgaW50KHZbMV0pCiAgICAgICAgaWYgbWFqb3IgPiAyNCBvciAobWFqb3IgPT0gMjQgYW5kIG1pbm9yID49IDEpOgogICAgICAgICAgICBvcy5lbnZpcm9uWydQSVBfRE9XTkdSQURFX0lOX1BST0dSRVNTJ10gPSAnMScKICAgICAgICAgICAgc3VicHJvY2Vzcy5jaGVja19jYWxsKAogICAgICAgICAgICAgICAgW3N5cy5leGVjdXRhYmxlLCAnLW0nLCAncGlwJywgJ2luc3RhbGwnLCAncGlwPT0yNC4wJywgJy1xJ10sCiAgICAgICAgICAgICAgICBzdGRlcnI9c3VicHJvY2Vzcy5ERVZOVUxMLCBzdGRvdXQ9c3VicHJvY2Vzcy5ERVZOVUxMCiAgICAgICAgICAgICkKICAgICAgICAgICAgb3MuZW52aXJvblsnUElQX0RPV05HUkFERV9ET05FJ10gPSAnMScKICAgICAgICAgICAgb3MuZW52aXJvbi5wb3AoJ1BJUF9ET1dOR1JBREVfSU5fUFJPR1JFU1MnLCBOb25lKQogICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICBwYXNz' | base64 -d > /tmp/pipfix/sitecustomize.py
         export PYTHONPATH=/tmp/pipfix:$PYTHONPATH
         echo "Injected sitecustomize.py to auto-downgrade pip in venvs"
 
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
         set -o pipefail
-        if ! BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug 2>&1 | tee /tmp/build_output.log; then
+        echo "Starting build (full log saved to /tmp/build_output.log; console filtered to skip noisy .py compile lines)..."
+        # Save FULL output to file, but only show filtered (non-Compiling) lines to console
+        # so GitHub Actions UI does not truncate the actual error.
+        BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug 2>&1 | awk '
+          { print >> "/tmp/build_output.log" }
+          # Skip noisy Python bytecode compilation lines (the main cause of UI truncation)
+          /^\[DEBUG\].*[Cc]ompiling.*\.py/ { next }
+          /^\[DEBUG\].*Compiling.*\.pyc/ { next }
+          { print; fflush(stdout) }
+        '
+        BUILD_STATUS=${PIPESTATUS[0]}
+        echo "Build exit status: $BUILD_STATUS"
+        if [ $BUILD_STATUS -ne 0 ]; then
           echo ""
           echo "========== BUILD FAILED =========="
-          echo "=== Last 100 lines of build log ==="
-          tail -100 /tmp/build_output.log
+          echo "=== Total log lines: $(wc -l < /tmp/build_output.log) ==="
+          echo "=== Last 80 lines of build log ==="
+          tail -80 /tmp/build_output.log
           echo ""
-          echo "=== Error lines from build log ==="
-          grep -in "error\|failed\|traceback\|exception" /tmp/build_output.log | tail -30
+          echo "=== Error/warning lines (excluding compile noise) ==="
+          grep -inE "error|failed|traceback|exception|fatal" /tmp/build_output.log | grep -viE "DEBUG.*Compiling|0 error|warning:" | tail -40
           echo ""
           # Emit GitHub Actions error annotations (visible via API without login)
-          grep -in "error\|failed\|traceback\|exception" /tmp/build_output.log | grep -v "DEBUG\|Compiling\|0 error" | tail -10 | while IFS= read -r line; do
+          echo "=== GitHub Actions error annotations ==="
+          grep -inE "error|failed|traceback|exception|fatal" /tmp/build_output.log | grep -viE "DEBUG.*Compiling|0 error|warning:" | tail -10 | while IFS= read -r line; do
             msg=$(echo "$line" | cut -c1-250)
             echo "::error::$msg"
           done
