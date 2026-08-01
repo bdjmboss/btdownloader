@@ -22,7 +22,7 @@ source.exclude_dirs = tests, bin, recipes
 version = 1.0.0
 
 # (list) Application requirements
-requirements = kivy, android
+requirements = python3==3.11, kivy, android
 
 # (str) Supported orientation
 orientation = portrait
