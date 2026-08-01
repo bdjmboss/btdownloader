@@ -22,18 +22,20 @@ jobs:
         sudo apt update
         sudo apt install -y git zip unzip openjdk-17-jdk python3-pip python3-venv autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
 
-        # Create venv with Python 3.10 so python3 in PATH is 3.10
+        # Create venv with Python 3.10
         python3.10 -m venv buildenv
         source buildenv/bin/activate
-        python3 --version
-        which python3
-
         pip install --upgrade pip
         pip install buildozer Cython virtualenv
 
+        # Clone p4a and patch to upgrade pip in venv
+        git clone --depth=1 https://github.com/kivy/python-for-android.git /tmp/p4a
+        # Add pip upgrade after venv creation in build.py
+        sed -i 's|subprocess.call(\[sys.executable,.*-m.*venv.*--copies.*str(venv_dir)\])|subprocess.call([sys.executable, "-m", "venv", "--copies", str(venv_dir)])\n        subprocess.check_call([str(venv_dir \/ "bin" \/ "python"), "-m", "pip", "install", "--upgrade", "pip"])|' /tmp/p4a/pythonforandroid/build.py
+
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
-        buildozer android debug
+        BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug
         ls -lh bin/*.apk
 
     - name: Upload APK
