@@ -35,21 +35,27 @@ jobs:
         git -C /tmp/p4a describe --tags || true
 
         # Fix open_rich_spinner ImportError (pip 24.1+ removed this function)
-        echo "=== Searching for open_rich_spinner in p4a ==="
-        grep -rn "open_rich_spinner" /tmp/p4a/ 2>/dev/null || echo "Not found in p4a source"
-        echo "=== Searching for venv creation in p4a ==="
-        grep -rn "venv\|virtualenv\|ensurepip" /tmp/p4a/pythonforandroid/ 2>/dev/null | head -20
-        # Patch: replace open_rich_spinner import with safe fallback
-        find /tmp/p4a -name "*.py" -exec grep -l "open_rich_spinner" {} \; 2>/dev/null | while read f; do
-          echo "Patching open_rich_spinner in: $f"
-          sed -i 's|from pip._internal.cli.spinners import open_rich_spinner|import contextlib as _ctx; open_rich_spinner = lambda *a, **kw: _ctx.nullcontext()|g' "$f"
-          sed -i 's|import open_rich_spinner|import contextlib as _ctx; open_rich_spinner = lambda *a, **kw: _ctx.nullcontext()|g' "$f"
-        done
-        # Also patch venv creation to downgrade pip after creation
-        find /tmp/p4a -name "*.py" -exec grep -l '"-m", "venv"\|"venv", "--copies"\|virtualenv' {} \; 2>/dev/null | while read f; do
-          echo "Adding pip downgrade after venv creation in: $f"
-          sed -i '/venv.*--copies/a\            subprocess.check_call([str(venv_dir / "bin" / "python"), "-m", "pip", "install", "pip==24.0"])' "$f"
-        done
+        # Inject sitecustomize.py via PYTHONPATH to auto-downgrade pip in any venv
+        mkdir -p /tmp/pipfix
+        cat > /tmp/pipfix/sitecustomize.py << 'PYEOF'
+import subprocess, sys, os
+# Only run inside a venv (not system Python)
+if sys.prefix != sys.base_prefix:
+    try:
+        import pip
+        v = pip.__version__.split('.')
+        major, minor = int(v[0]), int(v[1])
+        # pip 24.1+ removed open_rich_spinner, downgrade to 24.0
+        if major > 24 or (major == 24 and minor >= 1):
+            subprocess.check_call(
+                [sys.executable, '-m', 'pip', 'install', 'pip==24.0', '-q'],
+                stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
+            )
+    except Exception:
+        pass
+PYEOF
+        export PYTHONPATH=/tmp/pipfix:$PYTHONPATH
+        echo "Injected sitecustomize.py to auto-downgrade pip in venvs"
 
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
