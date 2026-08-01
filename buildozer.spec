@@ -36,6 +36,18 @@ android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 # (str) Android arch to build for
 android.archs = armeabi-v7a,arm64-v8a
 
+# (str) Android NDK version
+android.ndk = 25b
+
+# (str) Android SDK version
+android.sdk = 25.2.9519653
+
+# (str) Android API
+android.api = 33
+
+# (str) Android minimum API
+android.minapi = 24
+
 # (bool) Accept SDK license
 android.accept_sdk_license = True
 
