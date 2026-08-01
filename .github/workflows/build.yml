@@ -36,7 +36,8 @@ jobs:
 
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
-        BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug
+        set -o pipefail
+        BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug 2>&1 | tee /tmp/build_output.log
         ls -lh bin/*.apk
 
     - name: Upload APK
@@ -54,7 +55,7 @@ jobs:
       with:
         name: build-failure-log
         path: |
+          /tmp/build_output.log
           .buildozer/android/platform/build-*/build.log
-          /tmp/p4a/**/*.log
         retention-days: 7
-        if-no-files-found: ignore
+        if-no-files-found: warn
