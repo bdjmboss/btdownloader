@@ -51,8 +51,8 @@ android.minapi = 24
 # (bool) Accept SDK license
 android.accept_sdk_license = True
 
-# (str) python-for-android source dir (local clone)
-p4a.source_dir = /tmp/p4a
+# (str) python-for-android version (stable release tag, not master)
+p4a.branch = v2026.05.09
 
 [app:android.permissions]
 INTERNET

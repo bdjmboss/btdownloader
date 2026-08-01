@@ -28,14 +28,11 @@ jobs:
         pip install --upgrade pip
         pip install buildozer Cython virtualenv
 
-        # Clone p4a and patch to upgrade pip in venv
-        git clone --depth=1 https://github.com/kivy/python-for-android.git /tmp/p4a
-        # Add pip upgrade after venv creation in build.py
-        sed -i 's|subprocess.call(\[sys.executable,.*-m.*venv.*--copies.*str(venv_dir)\])|subprocess.call([sys.executable, "-m", "venv", "--copies", str(venv_dir)])\n        subprocess.check_call([str(venv_dir \/ "bin" \/ "python"), "-m", "pip", "install", "--upgrade", "pip"])|' /tmp/p4a/pythonforandroid/build.py
-
+        # Use stable p4a release tag (v2026.05.09) via p4a.branch in buildozer.spec
+        # master branch has libthorvg recipe bug (IndexError in glob)
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
-        BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug
+        buildozer android debug
         ls -lh bin/*.apk
 
     - name: Upload APK
