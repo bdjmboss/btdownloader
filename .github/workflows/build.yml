@@ -14,6 +14,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
     - name: Get Date
       id: get-date
       run: |
@@ -37,10 +42,10 @@ jobs:
         APP_ANDROID_ACCEPT_SDK_LICENSE: 1
         BUILDOZER_WARN_ON_ROOT: 0
       run: |
-        pip3 install --user --upgrade buildozer Cython virtualenv
-        export PATH=$PATH:~/.local/bin/
         sudo apt update
-        sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+        sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+        pip install --user --upgrade buildozer Cython virtualenv
+        export PATH=$PATH:~/.local/bin/
         cd ${{ github.workspace }}
         buildozer android debug
         ls -lh bin/*.apk
