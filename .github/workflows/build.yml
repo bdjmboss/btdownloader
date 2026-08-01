@@ -12,9 +12,10 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Build with Buildozer
+      id: build
       env:
         APP_ANDROID_ACCEPT_SDK_LICENSE: 1
         BUILDOZER_WARN_ON_ROOT: 0
@@ -28,17 +29,32 @@ jobs:
         pip install --upgrade pip
         pip install buildozer Cython virtualenv
 
-        # Use stable p4a release tag (v2026.05.09) via p4a.branch in buildozer.spec
-        # master branch has libthorvg recipe bug (IndexError in glob)
+        # Clone stable p4a release tag (NOT master, which has libthorvg recipe bug)
+        git clone --depth=1 --branch v2026.05.09 https://github.com/kivy/python-for-android.git /tmp/p4a
+        echo "Using p4a version:"
+        git -C /tmp/p4a describe --tags || true
+
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
-        buildozer android debug
+        BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug
         ls -lh bin/*.apk
 
     - name: Upload APK
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: btdownloader-apk
         path: bin/*.apk
         retention-days: 30
         overwrite: true
+
+    - name: Upload build log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-failure-log
+        path: |
+          .buildozer/android/platform/build-*/build.log
+          /tmp/p4a/**/*.log
+        retention-days: 7
+        if-no-files-found: ignore
