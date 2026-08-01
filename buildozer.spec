@@ -40,7 +40,7 @@ android.archs = armeabi-v7a,arm64-v8a
 android.accept_sdk_license = True
 
 # (str) python-for-android branch to use
-p4a.branch = stable
+p4a.branch = master
 
 [app:android.permissions]
 INTERNET
