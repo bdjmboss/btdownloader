@@ -22,15 +22,18 @@ jobs:
         sudo apt update
         sudo apt install -y git zip unzip openjdk-17-jdk python3-pip python3-venv autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
 
-        # Use Python 3.10 explicitly (not 3.14)
-        python3.10 --version
-        python3.10 -m pip install --user --upgrade pip
-        python3.10 -m pip install --user --upgrade buildozer Cython virtualenv
-        export PATH=~/.local/bin:$PATH
+        # Create venv with Python 3.10 so python3 in PATH is 3.10
+        python3.10 -m venv buildenv
+        source buildenv/bin/activate
+        python3 --version
+        which python3
+
+        pip install --upgrade pip
+        pip install buildozer Cython virtualenv
 
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
-        python3.10 -m buildozer android debug
+        buildozer android debug
         ls -lh bin/*.apk
 
     - name: Upload APK
