@@ -34,7 +34,7 @@ fullscreen = 0
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 
 # (str) Android arch to build for
-android.archs = armeabi-v7a,arm64-v8a
+android.archs = arm64-v8a
 
 # (str) Android NDK version
 android.ndk = 25b
