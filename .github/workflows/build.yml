@@ -14,21 +14,30 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Install dependencies and Build APK
+    - name: Build with Buildozer
       env:
         APP_ANDROID_ACCEPT_SDK_LICENSE: 1
         BUILDOZER_WARN_ON_ROOT: 0
       run: |
+        # Show Python versions available
+        echo "=== Python versions ==="
+        python3 --version || true
+        which python3 || true
+        ls -la /usr/bin/python3* || true
+
         sudo apt update
-        sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
-        pip install --user --upgrade buildozer Cython virtualenv
+        sudo apt install -y git zip unzip openjdk-17-jdk python3-pip python3-venv python3.10-venv autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+
+        # Force python3 to be 3.10 (not 3.14)
+        sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
+        sudo update-alternatives --set python3 /usr/bin/python3.10
+        python3 --version
+
+        # Install buildozer with system Python 3.10
+        pip3 install --user --upgrade buildozer Cython virtualenv
         export PATH=$PATH:~/.local/bin/
-        # Remove any cached build to avoid Python version mismatch
+
+        # Fresh build, no cache
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
         buildozer android debug
