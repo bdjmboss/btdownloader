@@ -37,7 +37,18 @@ jobs:
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
         set -o pipefail
-        BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug 2>&1 | tee /tmp/build_output.log
+        if ! BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug 2>&1 | tee /tmp/build_output.log; then
+          echo ""
+          echo "========== BUILD FAILED =========="
+          echo "=== Last 150 lines of build log ==="
+          tail -150 /tmp/build_output.log
+          echo ""
+          echo "=== Error lines from build log ==="
+          grep -in "error\|failed\|traceback\|exception" /tmp/build_output.log | tail -30
+          echo ""
+          echo "==================================="
+          exit 1
+        fi
         ls -lh bin/*.apk
 
     - name: Upload APK
