@@ -13,7 +13,7 @@ package.domain = org.example
 source.dir = .
 
 # (list) Source files to include (let empty to include all the files)
-source.include_exts = py,png,jpg,kv,atlas,ttf
+source.include_exts = py,png,jpg,kv,atlas,ttf,so
 
 # (list) List of directory to exclude
 source.exclude_dirs = tests, bin, recipes
@@ -22,7 +22,7 @@ source.exclude_dirs = tests, bin, recipes
 version = 1.0.0
 
 # (list) Application requirements
-requirements = python3==3.11.15,hostpython3==3.11.15, kivy, android
+requirements = python3==3.11.15,hostpython3==3.11.15, kivy, android, libtorrent
 
 # (str) Supported orientation
 orientation = portrait
@@ -53,6 +53,9 @@ android.accept_sdk_license = True
 
 # (str) python-for-android source dir (overridden by BUILDOZER_P4A_SOURCE_DIR in CI)
 p4a.source_dir = /tmp/p4a
+
+# (str) Local recipes directory (for custom libtorrent recipe)
+p4a.local_recipes = ./recipes
 
 [app:android.permissions]
 INTERNET
