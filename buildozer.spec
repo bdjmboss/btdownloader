@@ -22,7 +22,8 @@ source.exclude_dirs = tests, bin, recipes
 version = 1.0.0
 
 # (list) Application requirements
-requirements = python3==3.11.15,hostpython3==3.11.15, kivy, android, libtorrent
+# libtorrent/boost 使用 python-for-android 上游 recipe（CI pin 到 v2024.01.21）
+requirements = python3, kivy, android, openssl, libtorrent
 
 # (str) Supported orientation
 orientation = portrait
@@ -53,9 +54,6 @@ android.accept_sdk_license = True
 
 # (str) python-for-android source dir (overridden by BUILDOZER_P4A_SOURCE_DIR in CI)
 p4a.source_dir = /tmp/p4a
-
-# (str) Local recipes directory (for custom libtorrent recipe)
-p4a.local_recipes = ./recipes
 
 [app:android.permissions]
 INTERNET

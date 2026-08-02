@@ -42,6 +42,49 @@ except ImportError:
     LIBTORRENT_AVAILABLE = False
     lt = None
 
+from kivy.utils import platform
+IS_ANDROID = platform == 'android'
+
+
+def _setup_cjk_font():
+    """注册系统中文字体，解决安卓上中文显示为方块的问题"""
+    candidates = [
+        '/system/fonts/NotoSansCJK-Regular.ttc',
+        '/system/fonts/NotoSansSC-Regular.otf',
+        '/system/fonts/NotoSansCJKsc-Regular.otf',
+        '/system/fonts/DroidSansFallbackFull.ttf',
+        '/system/fonts/DroidSansFallback.ttf',
+        '/system/fonts/SourceHanSansCN-Regular.otf',
+        '/system/fonts/Miui-Regular.ttf',
+    ]
+    from kivy.core.text import LabelBase, DEFAULT_FONT
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                LabelBase.register(DEFAULT_FONT, path)
+                print(f'已注册中文字体: {path}')
+                return
+            except Exception as e:
+                print(f'注册字体失败 {path}: {e}')
+
+
+if IS_ANDROID:
+    _setup_cjk_font()
+
+
+def _default_save_dir():
+    """默认下载目录：安卓用外部存储 Download 目录，桌面用 ~/Downloads"""
+    if IS_ANDROID:
+        ext = os.environ.get('EXTERNAL_STORAGE') or '/storage/emulated/0'
+        path = os.path.join(ext, 'Download', 'BTDownloader')
+    else:
+        path = os.path.expanduser('~/Downloads')
+    try:
+        os.makedirs(path, exist_ok=True)
+    except Exception:
+        path = os.path.expanduser('~/Downloads')
+    return path
+
 
 # 状态对应的颜色 (R,G,B,A)：下载中=蓝、暂停=橙、完成/做种=绿、错误=红、等待=灰
 STATE_COLORS = {
@@ -93,7 +136,7 @@ class Config:
     def __init__(self, path):
         self.path = path
         self.data = dict(self.DEFAULTS)
-        self.data['save_dir'] = os.path.expanduser('~/Downloads')
+        self.data['save_dir'] = _default_save_dir()
         self.load()
 
     def load(self):
@@ -320,8 +363,8 @@ class BtDownloaderApp(App):
     def build(self):
         self.title = 'BT下载器'
 
-        # 配置文件路径
-        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+        # 配置文件路径（user_data_dir 在安卓上是可写的应用私有目录）
+        config_path = os.path.join(self.user_data_dir, 'config.json')
         self.config = Config(config_path)
 
         # 下载会话
@@ -994,7 +1037,7 @@ class BtDownloaderApp(App):
 
     def _on_save_settings(self, instance):
         try:
-            save_dir = self.s_save_dir.text.strip() or os.path.expanduser('~/Downloads')
+            save_dir = self.s_save_dir.text.strip() or _default_save_dir()
             self.config.set('save_dir', save_dir)
             max_c = max(1, int(self.s_max_concurrent.text or 5))
             self.config.set('max_concurrent', max_c)
@@ -1110,8 +1153,22 @@ class BtDownloaderApp(App):
                 opened = True
             except Exception:
                 opened = False
+        # 安卓：尝试用 Intent 调起文件管理器
+        if not opened and IS_ANDROID:
+            try:
+                from jnius import autoclass
+                Intent = autoclass('android.content.Intent')
+                Uri = autoclass('android.net.Uri')
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                intent = Intent(Intent.ACTION_VIEW)
+                intent.setDataAndType(Uri.parse('file://' + path), 'resource/folder')
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                PythonActivity.mActivity.startActivity(intent)
+                opened = True
+            except Exception:
+                opened = False
         if not opened:
-            # 安卓上无可用方法，仅提示路径
+            # 无可用方法，仅提示路径
             self._show_error(f'无法自动打开目录，路径:\n{path}')
 
     def _file_button_text(self, path, size, priority):
@@ -1206,6 +1263,18 @@ class BtDownloaderApp(App):
             lt.torrent_status.checking_resume_data: '检查恢复数据',
         }
         return states.get(state, '未知状态')
+
+    def on_start(self):
+        """启动后请求存储权限（安卓）"""
+        if IS_ANDROID:
+            try:
+                from android.permissions import request_permissions, Permission
+                request_permissions([
+                    Permission.WRITE_EXTERNAL_STORAGE,
+                    Permission.READ_EXTERNAL_STORAGE,
+                ])
+            except Exception as e:
+                print(f'请求存储权限失败: {e}')
 
     def on_stop(self):
         """应用退出时停止监控"""

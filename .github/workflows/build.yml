@@ -34,10 +34,11 @@ jobs:
         python3.10 -m venv buildenv
         source buildenv/bin/activate
         pip install --upgrade pip
-        pip install buildozer Cython virtualenv
+        # p4a v2024.01.21 时代的 recipe 需要 Cython 0.29.x
+        pip install buildozer Cython==0.29.36 virtualenv
 
-        # Clone stable p4a release tag (NOT master, which has libthorvg recipe bug)
-        git clone --depth=1 --branch v2026.05.09 https://github.com/kivy/python-for-android.git /tmp/p4a
+        # Clone p4a tag that ships libtorrent/boost recipes and has no libthorvg bug
+        git clone --depth=1 --branch v2024.01.21 https://github.com/kivy/python-for-android.git /tmp/p4a
         echo "Using p4a version:"
         git -C /tmp/p4a describe --tags || true
 
