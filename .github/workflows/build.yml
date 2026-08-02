@@ -43,39 +43,41 @@ jobs:
 
         rm -rf .buildozer .buildozer_global
         cd ${{ github.workspace }}
-        set -o pipefail
-        echo "Starting build (full log saved to /tmp/build_output.log; console filters out noisy [DEBUG] file-op lines)..."
-        # Save FULL output to file, but aggressively filter console output to avoid
-        # GitHub Actions UI truncation. Strategy:
-        #   - Always keep non-[DEBUG] lines ([INFO], task markers '->', command output, errors)
-        #   - For [DEBUG] lines, only show those containing error/fail/traceback keywords
-        #   - This removes thousands of /usr/bin/install, Compiling, cp, mkdir, ar lines
-        BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug 2>&1 | awk '
-          { print >> "/tmp/build_output.log" }
-          /^\[DEBUG\]/ {
-            if ($0 !~ /[Ee]rror|[Ff]ail|[Tt]raceback|[Ee]xception|fatal|cannot|[Dd]enied|No such/) next
-          }
-          { print; fflush(stdout) }
-        '
-        BUILD_STATUS=${PIPESTATUS[0]}
+        echo "Starting build. ALL buildozer output goes to /tmp/build_output.log (downloadable artifact)."
+        echo "Console shows only a heartbeat + final summary, so GitHub Actions UI will NEVER truncate."
+        : > /tmp/build_output.log
+
+        # Run buildozer in background with ALL output to file only (nothing to console)
+        BUILDOZER_P4A_SOURCE_DIR=/tmp/p4a buildozer android debug >> /tmp/build_output.log 2>&1 &
+        BUILD_PID=$!
+
+        # Heartbeat: print one line every 45s so the step is visibly alive but console stays tiny
+        while kill -0 $BUILD_PID 2>/dev/null; do
+          sleep 45
+          echo "  ... building ($(wc -l < /tmp/build_output.log) lines logged)"
+        done
+        wait $BUILD_PID
+        BUILD_STATUS=$?
         echo "Build exit status: $BUILD_STATUS"
+        echo "Total log lines: $(wc -l < /tmp/build_output.log)"
+
         if [ $BUILD_STATUS -ne 0 ]; then
           echo ""
           echo "========== BUILD FAILED =========="
-          echo "=== Total log lines: $(wc -l < /tmp/build_output.log) ==="
-          echo "=== Last 80 lines of build log ==="
-          tail -80 /tmp/build_output.log
+          echo "=== Last 120 lines of build log ==="
+          tail -120 /tmp/build_output.log
           echo ""
           echo "=== Error/warning lines (excluding [DEBUG] file-op noise) ==="
-          grep -inE "error|failed|traceback|exception|fatal" /tmp/build_output.log | grep -viE "DEBUG.*(Compiling|install|/usr/bin|cp |mkdir|ar |clang|ranlib)|0 error" | tail -40
+          grep -inE "error|failed|traceback|exception|fatal|cannot|denied|no such" /tmp/build_output.log | grep -viE "DEBUG.*(Compiling|install|/usr/bin|cp |mkdir|ar |clang|ranlib)|0 error" | tail -50
           echo ""
           # Emit GitHub Actions error annotations (visible via API without login)
           echo "=== GitHub Actions error annotations ==="
-          grep -inE "error|failed|traceback|exception|fatal" /tmp/build_output.log | grep -viE "DEBUG.*(Compiling|install|/usr/bin|cp |mkdir|ar |clang|ranlib)|0 error" | tail -10 | while IFS= read -r line; do
+          grep -inE "error|failed|traceback|exception|fatal|cannot|denied|no such" /tmp/build_output.log | grep -viE "DEBUG.*(Compiling|install|/usr/bin|cp |mkdir|ar |clang|ranlib)|0 error" | tail -10 | while IFS= read -r line; do
             msg=$(echo "$line" | cut -c1-250)
             echo "::error::$msg"
           done
           echo "==================================="
+          echo "Download the 'build-failure-log' artifact for the FULL unfiltered log."
           exit 1
         fi
         ls -lh bin/*.apk
