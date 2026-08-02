@@ -55,6 +55,9 @@ android.accept_sdk_license = True
 # (str) python-for-android source dir (overridden by BUILDOZER_P4A_SOURCE_DIR in CI)
 p4a.source_dir = /tmp/p4a
 
+# (str) 本地 recipe 目录：仅覆盖 boost（增加 Python 3.11 兼容性补丁），libtorrent 仍用上游
+p4a.local_recipes = ./recipes
+
 [app:android.permissions]
 INTERNET
 WRITE_EXTERNAL_STORAGE

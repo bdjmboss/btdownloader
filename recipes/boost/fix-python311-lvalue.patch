@@ -1,0 +1,101 @@
+diff -ruN orig/boost/python/object/make_instance.hpp new/boost/python/object/make_instance.hpp
+--- orig/boost/python/object/make_instance.hpp	2026-08-02 11:50:49.015245900 +0800
++++ new/boost/python/object/make_instance.hpp	2026-08-02 11:52:37.607890000 +0800
+@@ -47,7 +47,7 @@
+               
+             // Note the position of the internally-stored Holder,
+             // for the sake of destruction
+-            Py_SIZE(instance) = offsetof(instance_t, storage);
++            Py_SET_SIZE(instance, offsetof(instance_t, storage));
+ 
+             // Release ownership of the python object
+             protect.cancel();
+diff -ruN orig/libs/python/src/object/class.cpp new/libs/python/src/object/class.cpp
+--- orig/libs/python/src/object/class.cpp	2026-08-02 11:50:49.116973300 +0800
++++ new/libs/python/src/object/class.cpp	2026-08-02 11:52:37.587942900 +0800
+@@ -208,7 +208,7 @@
+   {
+       if (static_data_object.tp_dict == 0)
+       {
+-          Py_TYPE(&static_data_object) = &PyType_Type;
++          Py_SET_TYPE(&static_data_object, &PyType_Type);
+           static_data_object.tp_base = &PyProperty_Type;
+           if (PyType_Ready(&static_data_object))
+               return 0;
+@@ -316,7 +316,7 @@
+   {
+       if (class_metatype_object.tp_dict == 0)
+       {
+-          Py_TYPE(&class_metatype_object) = &PyType_Type;
++          Py_SET_TYPE(&class_metatype_object, &PyType_Type);
+           class_metatype_object.tp_base = &PyType_Type;
+           if (PyType_Ready(&class_metatype_object))
+               return type_handle();
+@@ -375,11 +375,8 @@
+               // there. A negative number indicates that the extra
+               // instance memory is not yet allocated to any holders.
+ #if PY_VERSION_HEX >= 0x02060000
+-              Py_SIZE(result) =
+-#else
+-              result->ob_size =
+-#endif
+-                  -(static_cast<int>(offsetof(instance<>,storage) + instance_size));
++              Py_SET_SIZE(result,
++                  -(static_cast<int>(offsetof(instance<>,storage) + instance_size)));
+           }
+           return (PyObject*)result;
+       }
+@@ -470,7 +467,7 @@
+   {
+       if (class_type_object.tp_dict == 0)
+       {
+-          Py_TYPE(&class_type_object) = incref(class_metatype().get());
++          Py_SET_TYPE(&class_type_object, incref(class_metatype().get()));
+           class_type_object.tp_base = &PyBaseObject_Type;
+           if (PyType_Ready(&class_type_object))
+               return type_handle();
+@@ -739,7 +736,7 @@
+         assert(holder_offset >= offsetof(objects::instance<>,storage));
+ 
+         // Record the fact that the storage is occupied, noting where it starts
+-        Py_SIZE(self) = holder_offset;
++        Py_SET_SIZE(self, holder_offset);
+         return (char*)self + holder_offset;
+     }
+     else
+diff -ruN orig/libs/python/src/object/enum.cpp new/libs/python/src/object/enum.cpp
+--- orig/libs/python/src/object/enum.cpp	2026-08-02 11:50:49.199751900 +0800
++++ new/libs/python/src/object/enum.cpp	2026-08-02 11:52:37.626338900 +0800
+@@ -153,7 +153,7 @@
+   {
+       if (enum_type_object.tp_dict == 0)
+       {
+-          Py_TYPE(&enum_type_object) = incref(&PyType_Type);
++          Py_SET_TYPE(&enum_type_object, incref(&PyType_Type));
+ #if PY_VERSION_HEX >= 0x03000000
+           enum_type_object.tp_base = &PyLong_Type;
+ #else
+diff -ruN orig/libs/python/src/object/function.cpp new/libs/python/src/object/function.cpp
+--- orig/libs/python/src/object/function.cpp	2026-08-02 11:50:49.230669200 +0800
++++ new/libs/python/src/object/function.cpp	2026-08-02 11:52:37.637282300 +0800
+@@ -107,7 +107,7 @@
+     PyObject* p = this;
+     if (Py_TYPE(&function_type) == 0)
+     {
+-        Py_TYPE(&function_type) = &PyType_Type;
++        Py_SET_TYPE(&function_type, &PyType_Type);
+         ::PyType_Ready(&function_type);
+     }
+     
+diff -ruN orig/libs/python/src/object/life_support.cpp new/libs/python/src/object/life_support.cpp
+--- orig/libs/python/src/object/life_support.cpp	2026-08-02 11:50:49.299486100 +0800
++++ new/libs/python/src/object/life_support.cpp	2026-08-02 11:52:37.655235800 +0800
+@@ -93,7 +93,7 @@
+     
+     if (Py_TYPE(&life_support_type) == 0)
+     {
+-        Py_TYPE(&life_support_type) = &PyType_Type;
++        Py_SET_TYPE(&life_support_type, &PyType_Type);
+         PyType_Ready(&life_support_type);
+     }
+     
